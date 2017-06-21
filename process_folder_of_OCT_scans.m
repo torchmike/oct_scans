@@ -113,22 +113,11 @@ function process_folder_of_OCT_scans(directory, oct_extension)
             
             % Normalize, export, compare peak ratios
             [A_scan, A_scan_denoised, ...
-                A_scan_denoised_frame, A_scan_denoised_2D_1D, ...
-                peak_1, peak_2, locs_peaks, ratio,GCL_peak_index, RPE_peak_index] = ...
+                A_scan_denoised_frame, A_scan_denoised_2D_1D, ...                
+                 GCL_PEAKS, RPE_PEAKS, GCL_RPE_RATIOS] = ...
                 compare_A_scans(A_scan, A_scan_denoised, ...
                             A_scan_denoised_frame, A_scan_denoised_2D_1D, ...
-                            directory, stripped_filename);
-        
-            peak_1_8bit = double(im(locs_peaks(1),x,z));
-            peak_2_8bit = double(im(locs_peaks(2),x,z));
-            ratio_8bit =  peak_2_8bit/ peak_1_8bit;
-            quantization_step = 1 / (2^8);
-                        
-            % Write results on disk
-            write_ratio_to_disk(peak_1, peak_2, locs_peaks, ratio, peak_1_8bit, peak_2_8bit, ratio_8bit, ...
-                quantization_step, z, x, directory, stripped_filename)
-            
-                        
+                            directory, stripped_filename);                                                 
             % OPTIONAL VISUALIZATION
             z_of_interest = z;
             visualize_ON = 1;
@@ -153,9 +142,13 @@ function process_folder_of_OCT_scans(directory, oct_extension)
                 frame_denoised = frame_denoised / max(frame_denoised(:));
                 
                 subplot(rows,cols,1); imshow(in, [])
+                for x = 1:length(RPE_PEAKS) 
+                    line([x x], [GCL_PEAKS(x) (GCL_PEAKS(x) + 20)], 'Color', 'r')
+                    line([x x], [(RPE_PEAKS(x) - 5) (RPE_PEAKS(x) + 5)], 'Color', 'r')
+                end
                 
-                line([x x], [GCL_peak_index (GCL_peak_index + 20)], 'Color', 'r')
-                line([x x], [(RPE_peak_index - 5) (RPE_peak_index + 5)], 'Color', 'r')
+ %               line([x x], [GCL_peak_index (GCL_peak_index + 20)], 'Color', 'b')
+             %   line([x x], [(RPE_peak_index - 5) (RPE_peak_index + 5)], 'Color', 'b')
 
                 title('Input'); colorbar
                 subplot(rows,cols,2); imshow(denoised, [])
@@ -163,9 +156,9 @@ function process_folder_of_OCT_scans(directory, oct_extension)
                 subplot(rows,cols,3); imshow(in-denoised, [])
                 title('Noise Residual (In-BM4D)'); colorbar
                 
-                subplot(rows,cols,4); imshow(frame_denoised, [])
-                title('FrameDenoising'); colorbar; hold on
-                line([x x], [1 size(frame_denoised,1)], 'Color', 'r')
+                subplot(rows,cols,4); plot(GCL_RPE_RATIOS);
+                title('Distribution of GCL/RPE Ratios'); colorbar; hold on
+               % line([x x], [1 size(frame_denoised,1)], 'Color', 'r')
                 
                 subplot(rows,cols,5); imshow(denoised-frame_denoised, [])
                 title('Noise Residual (BM4D-FrameDenoising)'); colorbar
@@ -173,10 +166,11 @@ function process_folder_of_OCT_scans(directory, oct_extension)
                 % A-Scan Comparison
                 subplot(rows,cols,6); hold on
                 y = linspace(1, length(A_scan), length(A_scan));
-                p = plot(y, A_scan, ...
-                         y, A_scan_denoised, ...
-                         y, A_scan_denoised_frame, 'k', ...
-                         y, A_scan_denoised_2D_1D);
+                
+                p = plot(A_scan); %y, A_scan, ...
+                         %y, A_scan_denoised, ...
+                         %y, A_scan_denoised_frame, 'k', ...
+                         %y, A_scan_denoised_2D_1D);
                 set(p(3), 'LineWidth', 1)
                 
                 xlim([0 length(y)])
@@ -215,7 +209,7 @@ function process_folder_of_OCT_scans(directory, oct_extension)
     
     
     function [A_scan, A_scan_denoised, A_scan_denoised_frame, A_scan_denoised_2D_1D, ...
-            peak_1, peak_2, locs_peaks, ratio, GCL_peak_index, RPE_peak_index] = ...
+            GCL_PEAKS, RPE_PEAKS, GCL_RPE_RATIOS] = ...
             compare_A_scans(A_scan, A_scan_denoised, ...
                     A_scan_denoised_frame, A_scan_denoised_2D_1D, ...
                     directory, stripped_filename)
@@ -238,14 +232,14 @@ function process_folder_of_OCT_scans(directory, oct_extension)
             % TODO! Maybe save some metadata if wanted at some point?    
         
         % [peak_1, peak_2, locs_peaks, ratio] = find_intensity_peaks(A_scan_denoised_frame, A_scan_denoised_2D_1D);
-        [peak_1, peak_2, locs_peaks, ratio, GCL_peak_index, RPE_peak_index] = find_intensity_peaks(A_scan, A_scan_denoised_frame);
+        [GCL_PEAKS, RPE_PEAKS, GCL_RPE_RATIOS] = find_intensity_peaks(A_scan, A_scan_denoised_frame);
         
             % TODO! You could try different combinations, and you could do
             % systematic sensitivity analysis of how these parameters
             % actually affect your final estimates of the intensity ratio
             
             
-    function [peak_1, peak_2, locs_peaks, ratio, GCL_peak_index, RPE_peak_index] = find_intensity_peaks(A_scan, A_Scan_denoised)
+    function [ GCL_PEAKS, RPE_PEAKS, GCL_RPE_RATIOS] = find_intensity_peaks(A_scan, A_Scan_denoised)
         
         % Quite dumb algorithm in the end working for your canonical OCT
         % profile for sure. Think of something more robust if this start
@@ -254,35 +248,51 @@ function process_folder_of_OCT_scans(directory, oct_extension)
         % Use the denoised version for peak location, and get the values
         % from the raw non-denoised version
         
-        x = linspace(1, length(A_scan), length(A_scan))';
-        found_left_peak = 0
-        for i = 2:length(A_Scan_denoised)
-            my_std = std(A_Scan_denoised(1:i));
-            delta = A_Scan_denoised(i) - A_Scan_denoised(i-1);
-            
-           if delta > my_std*2.2
-               found_left_peak=1
-              break;
-           end
-        end
-        if found_left_peak == 0
-            error("Could not effectively find a GCL peak");
-        end
-        i=i+20
-        GCL_peak_index = i
-        GCL_peak = mean(A_Scan_denoised(i:i+20)); % Or does it make more sense to use the original values?
+        %A_scan is 1024 tall ( first index) by 151 pixels wide ( second index)
+        % for each 151 pixels wide, we want to do our calculation across
+        % the 1024 pixels tall segment
         
-        [pks,locs] = findpeaks(A_Scan_denoised,x);
-        [pks,I] = sort(pks, 'descend');
-        locs = locs(I);
-        peak_index = locs(1);
-        RPE_peak_index = peak_index;
+        %we will fill up an array for peak 1 location and peak 2 location
+        %separately create a function for averaging and creating the ratios
+        
+        x_space = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x
+        GCL_PEAKS = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x 
+        RPE_PEAKS = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x
+        GCL_RPE_RATIOS = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x
+
+        for x=1:length(x_space)
+            found_left_peak = 0;
+            A_scan_denoised_slice = A_Scan_denoised(:,x);
+
+            for y_index = 2:size(A_scan_denoised_slice,1) % Along y
+                my_std = std(A_scan_denoised_slice(1:y_index));
+                delta = A_scan_denoised_slice(y_index) - mean(A_scan_denoised_slice(1:y_index));
+
+               if delta > my_std*2.2
+                   found_left_peak=1;
+                  break;
+               end
+            end
+            if found_left_peak == 0
+                error("Could not effectively find a GCL peak");
+            end
+            GCL_peak_index = y_index + 20;
+            GCL_PEAKS(x) = GCL_peak_index;
+            GCL_peak = mean(A_scan_denoised_slice(GCL_peak_index:GCL_peak_index+20)); % Or does it make more sense to use the original values?
+            [M,RPE_peak_index] = max(A_scan_denoised_slice);
+            RPE_PEAKS(x) = RPE_peak_index;
+            RPE_peak = mean(A_scan_denoised_slice(RPE_peak_index-5:RPE_peak_index+5));
+            peak_1 = RPE_peak;
+            peak_2=GCL_peak;
+            ratio = GCL_peak / RPE_peak;
+            locs_peaks = [y_index RPE_peak_index ];
+            GCL_RPE_RATIOS(x) = ratio;
+
+        end
+        RPE_PEAKS
+        GCL_PEAKS
+        GCL_RPE_RATIOS
                 
-        RPE_peak = mean(A_scan(peak_index-5:peak_index+5));
-        peak_1 = RPE_peak;
-        peak_2=GCL_peak;
-        ratio = GCL_peak / RPE_peak
-        locs_peaks = [i peak_index ];
             
         % TODO! If you feel like, you could add some uncertainty estimation with
         % Monte Carlo sampling or something similar as if your final
@@ -329,7 +339,7 @@ function process_folder_of_OCT_scans(directory, oct_extension)
         
         % One A-scan that is the one in the middle of the x and z-range
         x = round((x_min + x_max)/2);
-        %x = linspace(double(x_min),double(x_max),x_max - x_min+1); 
+        x = linspace(double(x_min),double(x_max),x_max - x_min+1); 
 
         %loop here 
         %TODO
