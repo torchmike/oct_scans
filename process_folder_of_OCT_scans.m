@@ -142,9 +142,14 @@ function process_folder_of_OCT_scans(directory, oct_extension)
                 frame_denoised = frame_denoised / max(frame_denoised(:));
                 
                 subplot(rows,cols,1); imshow(in, [])
-                for x = 1:length(RPE_PEAKS) 
-                    line([x x], [GCL_PEAKS(x) (GCL_PEAKS(x) + 20)], 'Color', 'r')
-                    line([x x], [(RPE_PEAKS(x) - 5) (RPE_PEAKS(x) + 5)], 'Color', 'r')
+                for x_index = 1:length(RPE_PEAKS) 
+                    
+                    lh = line([x(x_index) x(x_index)], [GCL_PEAKS(x_index) (GCL_PEAKS(x_index) + 20)], 'Color', 'r');
+                    lh.Color=[1,0,0,0.5];
+
+                    lh = line([x(x_index) x(x_index)], [(RPE_PEAKS(x_index) - 5) (RPE_PEAKS(x_index) + 5)], 'Color', 'r');
+                    lh.Color=[1,0,0,0.5];
+
                 end
                 
  %               line([x x], [GCL_peak_index (GCL_peak_index + 20)], 'Color', 'b')
@@ -176,31 +181,31 @@ function process_folder_of_OCT_scans(directory, oct_extension)
                 xlim([0 length(y)])
                                 
                 % Give also the input peaks in the input UINT8 type
-                strtitle = sprintf('%s\n%s\n%s', 'A-scan', ...
-                                    ['peak1_i_n = ', num2str(im(locs_peaks(1),x,z)), ...
-                                    ', peak2_i_n = ', num2str(im(locs_peaks(2),x,z))], ...
-                                    ['8-bit ratio = ', num2str(ratio_8bit,3), ...
-                                    ', quantization step = ', num2str(quantization_step,3)]);
+              %  strtitle = sprintf('%s\n%s\n%s', 'A-scan', ...
+               %                     ['peak1_i_n = ', num2str(im(locs_peaks(1),x,z)), ...
+                %                    ', peak2_i_n = ', num2str(im(locs_peaks(2),x,z))], ...
+                 %                   ['8-bit ratio = ', num2str(ratio_8bit,3), ...
+                  %                  ', quantization step = ', num2str(quantization_step,3)]);
                                 
-                tit = title(strtitle);
-                set(tit, 'FontSize', 8)
+%                tit = title(strtitle);
+%                set(tit, 'FontSize', 8)
                 
-                leg = legend(['A-scan (BM4D), ratio = ', num2str(ratio,3)], 'A-scan (1D Denoising)', ...
-                             'A-scan (2D Denoising)', 'A-scan (2D+1D Denoising)');
-                    legend('boxoff')
+              %  leg = legend(['A-scan (BM4D), ratio = ', num2str(ratio,3)], 'A-scan (1D Denoising)', ...
+           %                  'A-scan (2D Denoising)', 'A-scan (2D+1D Denoising)');
+         %           legend('boxoff')
                 % uistack(p(3),'top');
                 
                 % mark the peaks
-                p_peaks = plot(locs_peaks(1), peak_1, '^', locs_peaks(2), peak_2, '^');
-                set(p_peaks, 'MarkerFaceColor', 'k')
+         %       p_peaks = plot(locs_peaks(1), peak_1, '^', locs_peaks(2), peak_2, '^');
+          %      set(p_peaks, 'MarkerFaceColor', 'k')
                 
                 hold off
                 
-                saveOn = 0;
+                saveOn = 1;
                 if saveOn == 1
                     filename = strrep(file_list{file}, '.img', '');
                     saveas(fig, fullfile(directory, filename), 'png')
-                    close all
+                   % close all
                 end
             end
             
@@ -268,7 +273,7 @@ function process_folder_of_OCT_scans(directory, oct_extension)
                 my_std = std(A_scan_denoised_slice(1:y_index));
                 delta = A_scan_denoised_slice(y_index) - mean(A_scan_denoised_slice(1:y_index));
 
-               if delta > my_std*2.2
+               if delta > my_std*4
                    found_left_peak=1;
                   break;
                end
@@ -340,6 +345,8 @@ function process_folder_of_OCT_scans(directory, oct_extension)
         % One A-scan that is the one in the middle of the x and z-range
         x = round((x_min + x_max)/2);
         x = linspace(double(x_min),double(x_max),x_max - x_min+1); 
+        x
+        
 
         %loop here 
         %TODO
