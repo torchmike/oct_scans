@@ -152,6 +152,9 @@ for z = z_min:z_max
                 
                 subplot(rows,cols,1); imshow(in, [])
                 for x_index = 1:length(RPE_PEAKS) 
+                    if GCL_PEAKS(x_index) == -1 || RPE_PEAKS(x_index) == -1
+                        continue
+                    end
                     
                     lh = line([x(x_index) x(x_index)], [GCL_PEAKS(x_index) (GCL_PEAKS(x_index) + 15)], 'Color', 'r');
                     %lh.Color=[1,0,0,0.5];
@@ -268,18 +271,29 @@ for z = z_min:z_max
             found_left_peak = 0;
             A_scan_denoised_slice = A_Scan_denoised(:,x);
             A_scan_denoised_gauss_slice = A_Scan_denoised_gauss(:,x);
+            
+            
+            
+            start_point =50;
+            
 
-            for y_index = 2:size(A_scan_denoised_slice,1) % Along y
-                my_std = std(A_scan_denoised_gauss_slice(1:y_index));
-                delta = A_scan_denoised_gauss_slice(y_index) - mean(A_scan_denoised_gauss_slice(1:y_index));
+            for y_index = start_point:size(A_scan_denoised_slice,1) % Along y
+                my_std = std(A_scan_denoised_gauss_slice(start_point:y_index));
+                delta = A_scan_denoised_gauss_slice(y_index) - mean(A_scan_denoised_gauss_slice(start_point:y_index));
 
                if delta > my_std*4
-                   found_left_peak=1;
+                   found_left_peak=1
                   break;
                end
             end
-            if found_left_peak == 0
-                error("Could not effectively find a GCL peak");
+            if found_left_peak == 0                               
+           %     plot(A_scan_denoised_gauss_slice);
+                    GCL_PEAKS(x) = -1;
+                    RPE_PEAKS(x) = -1;
+                    GCL_RPE_RATIOS(x) = -1;
+                    
+           continue
+          %      error('Could not effectively find a GCL peak');
             end
             GCL_peak_index = y_index + 20;
             GCL_PEAKS(x) = GCL_peak_index;
