@@ -144,11 +144,11 @@ function process_folder_of_OCT_scans(directory, oct_extension)
                 subplot(rows,cols,1); imshow(in, [])
                 for x_index = 1:length(RPE_PEAKS) 
                     
-                    lh = line([x(x_index) x(x_index)], [GCL_PEAKS(x_index) (GCL_PEAKS(x_index) + 20)], 'Color', 'r');
-                    lh.Color=[1,0,0,0.5];
+                    lh = line([x(x_index) x(x_index)], [GCL_PEAKS(x_index) (GCL_PEAKS(x_index) + 15)], 'Color', 'r');
+                    %lh.Color=[1,0,0,0.5];
 
                     lh = line([x(x_index) x(x_index)], [(RPE_PEAKS(x_index) - 5) (RPE_PEAKS(x_index) + 5)], 'Color', 'r');
-                    lh.Color=[1,0,0,0.5];
+                    %lh.Color=[1,0,0,0.5];
 
                 end
                 
@@ -161,7 +161,7 @@ function process_folder_of_OCT_scans(directory, oct_extension)
                 subplot(rows,cols,3); imshow(in-denoised, [])
                 title('Noise Residual (In-BM4D)'); colorbar
                 
-                subplot(rows,cols,4); plot(GCL_RPE_RATIOS);
+                subplot(rows,cols,4); histogram(GCL_RPE_RATIOS,40);
                 title('Distribution of GCL/RPE Ratios'); colorbar; hold on
                % line([x x], [1 size(frame_denoised,1)], 'Color', 'r')
                 
@@ -258,20 +258,22 @@ function process_folder_of_OCT_scans(directory, oct_extension)
         % the 1024 pixels tall segment
         
         %we will fill up an array for peak 1 location and peak 2 location
-        %separately create a function for averaging and creating the ratios
+        %separately create a function for averaging and creating the ratios       
         
         x_space = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x
         GCL_PEAKS = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x 
         RPE_PEAKS = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x
         GCL_RPE_RATIOS = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x
 
+        A_Scan_denoised_gauss = imgaussfilt(A_Scan_denoised, 5);
         for x=1:length(x_space)
             found_left_peak = 0;
             A_scan_denoised_slice = A_Scan_denoised(:,x);
+            A_scan_denoised_gauss_slice = A_Scan_denoised_gauss(:,x);
 
             for y_index = 2:size(A_scan_denoised_slice,1) % Along y
-                my_std = std(A_scan_denoised_slice(1:y_index));
-                delta = A_scan_denoised_slice(y_index) - mean(A_scan_denoised_slice(1:y_index));
+                my_std = std(A_scan_denoised_gauss_slice(1:y_index));
+                delta = A_scan_denoised_gauss_slice(y_index) - mean(A_scan_denoised_gauss_slice(1:y_index));
 
                if delta > my_std*4
                    found_left_peak=1;
@@ -283,8 +285,10 @@ function process_folder_of_OCT_scans(directory, oct_extension)
             end
             GCL_peak_index = y_index + 20;
             GCL_PEAKS(x) = GCL_peak_index;
-            GCL_peak = mean(A_scan_denoised_slice(GCL_peak_index:GCL_peak_index+20)); % Or does it make more sense to use the original values?
-            [M,RPE_peak_index] = max(A_scan_denoised_slice);
+            GCL_peak = mean(A_scan_denoised_gauss_slice(GCL_peak_index:GCL_peak_index+15)); % Or does it make more sense to use the original values?
+            offset = GCL_peak_index + 15;
+            [M,RPE_peak_index] = max(A_scan_denoised_gauss_slice(offset+1:length(A_scan_denoised_slice)));
+            RPE_peak_index = RPE_peak_index + offset
             RPE_PEAKS(x) = RPE_peak_index;
             RPE_peak = mean(A_scan_denoised_slice(RPE_peak_index-5:RPE_peak_index+5));
             peak_1 = RPE_peak;
@@ -353,6 +357,7 @@ function process_folder_of_OCT_scans(directory, oct_extension)
         
         
         z = round((z_min + z_max)/2);
+        z = z_max
         A_scan = Z(:,x,z);
         
         % normalize the A_scan
