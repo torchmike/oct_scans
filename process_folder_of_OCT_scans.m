@@ -79,12 +79,16 @@ function process_folder_of_OCT_scans(directory, oct_extension)
             coords_ind = check_if_coords(file_list{file}, file_specs.filename);
             eye = 'right';
             if ~isempty(coords_ind)
-                [Z_crop, A_scan, x, z] = crop_the_cube(Z, coords_ind, file_specs, eye);
+                [Z_crop, A_scan, x, z_min, z_max] = crop_the_cube(Z, coords_ind, file_specs, eye);
             else
                 warning(['No custom cropping coordinates found for file = "', ...
                         file_list{file}, '", how is that possible?'])
-                [Z_crop, A_scan, x, z] = crop_the_cube(Z, coords_ind, file_specs, eye);
+                [Z_crop, A_scan, x, z_min, z_max] = crop_the_cube(Z, coords_ind, file_specs, eye);
             end
+            
+            
+for z = z_min:z_max
+            
             
             % Save the cropped cube, you could do further
             % denoising/smoothing at this point a lot faster than on the
@@ -117,8 +121,13 @@ function process_folder_of_OCT_scans(directory, oct_extension)
                  GCL_PEAKS, RPE_PEAKS, GCL_RPE_RATIOS] = ...
                 compare_A_scans(A_scan, A_scan_denoised, ...
                             A_scan_denoised_frame, A_scan_denoised_2D_1D, ...
-                            directory, stripped_filename);                                                 
-            % OPTIONAL VISUALIZATION
+                            directory, stripped_filename);                                            
+
+                        % OPTIONAL VISUALIZATION
+                        
+            gcl_rpe_ratios_filename = sprintf("%s_%d.txt", strrep(denoised_filename, '.tif', '_gcl_rpe_ratios'), z);
+            gcl_rpe_ratios_file = fopen(gcl_rpe_ratios_filename,'w')
+            fprintf(gcl_rpe_ratios_file,'%12.8f\n',GCL_RPE_RATIOS);
             z_of_interest = z;
             visualize_ON = 1;
             if visualize_ON == 1 
@@ -180,38 +189,27 @@ function process_folder_of_OCT_scans(directory, oct_extension)
                 
                 xlim([0 length(y)])
                                 
-                % Give also the input peaks in the input UINT8 type
-              %  strtitle = sprintf('%s\n%s\n%s', 'A-scan', ...
-               %                     ['peak1_i_n = ', num2str(im(locs_peaks(1),x,z)), ...
-                %                    ', peak2_i_n = ', num2str(im(locs_peaks(2),x,z))], ...
-                 %                   ['8-bit ratio = ', num2str(ratio_8bit,3), ...
-                  %                  ', quantization step = ', num2str(quantization_step,3)]);
-                                
-%                tit = title(strtitle);
-%                set(tit, 'FontSize', 8)
-                
-              %  leg = legend(['A-scan (BM4D), ratio = ', num2str(ratio,3)], 'A-scan (1D Denoising)', ...
-           %                  'A-scan (2D Denoising)', 'A-scan (2D+1D Denoising)');
-         %           legend('boxoff')
-                % uistack(p(3),'top');
-                
-                % mark the peaks
-         %       p_peaks = plot(locs_peaks(1), peak_1, '^', locs_peaks(2), peak_2, '^');
-          %      set(p_peaks, 'MarkerFaceColor', 'k')
-                
+  
                 hold off
                 
                 saveOn = 1;
                 if saveOn == 1
-                    filename = strrep(file_list{file}, '.img', '');
-                    saveas(fig, fullfile(directory, filename), 'png')
-                   % close all
+                    filename = strrep(file_list{file}, '.img', '')
+                    filename = sprintf('%s_%d',filename, z);
+                    directory
+                    filename
+                    
+                    filename = fullfile(directory, filename);
+                    filename
+                    
+                    saveas(fig,  filename, 'png')
+                    close all
                 end
             end
             
         end
         
-    
+        end   
     
     function [A_scan, A_scan_denoised, A_scan_denoised_frame, A_scan_denoised_2D_1D, ...
             GCL_PEAKS, RPE_PEAKS, GCL_RPE_RATIOS] = ...
@@ -232,8 +230,8 @@ function process_folder_of_OCT_scans(directory, oct_extension)
         A_scan_denoised_2D_1D = A_scan_denoised_2D_1D / max(A_scan_denoised_2D_1D(:));
         
         % save the A-scan
-        dlmwrite(fullfile(directory, [stripped_filename, '_Ascan_raw.txt']), A_scan)
-        dlmwrite(fullfile(directory, [stripped_filename, '_Ascan_2D_denoised.txt']), A_scan_denoised_frame)
+        %dlmwrite(fullfile(directory, [stripped_filename, '_Ascan_raw.txt']), A_scan)
+        %dlmwrite(fullfile(directory, [stripped_filename, '_Ascan_2D_denoised.txt']), A_scan_denoised_frame)
             % TODO! Maybe save some metadata if wanted at some point?    
         
         % [peak_1, peak_2, locs_peaks, ratio] = find_intensity_peaks(A_scan_denoised_frame, A_scan_denoised_2D_1D);
@@ -310,7 +308,7 @@ function process_folder_of_OCT_scans(directory, oct_extension)
         % rather sensitivite to the actual denoising of the A-scan
         
         
-    function [Z_crop, A_scan, x, z] = crop_the_cube(Z, coords_ind, file_specs, eye)
+    function [Z_crop, A_scan, x, z_min, z_max] = crop_the_cube(Z, coords_ind, file_specs, eye)
         
        
         if isempty(coords_ind)
@@ -367,22 +365,7 @@ function process_folder_of_OCT_scans(directory, oct_extension)
         % TODO! There is possibly quite a lot of empty space left still on
         % y-axis direction (note! in Matlab the first dimension is y)
         
-       
-    function write_ratio_to_disk(peak_1, peak_2, locs_peaks, ratio, peak_1_8bit, peak_2_8bit, ratio_8bit, quantization_step, z, x, directory, stripped_filename)
-        
-        fileOut = fullfile(directory, [stripped_filename, 'ratio.txt']);
-        fid = fopen(fileOut, 'wt');
-        
-        fprintf(fid, '%s\t %s\t %s\t %s\t %s\t %s\t %s\t %s\t %s\t %s \n', 'filename', 'peak_1', 'peak_2', 'ratio_BM4D', ...
-                                     'peak_1_8bit', 'peak_2_8bit','ratio_8bit', 'quantization_step', 'z_AScan', 'x_AScan');  % header        
-                                 
- 
-        fprintf(fid,'%s\t %d\t %d\t %d\t %d\t %d\t %d\t %d\t %d\t %d\t %d \n', stripped_filename, ...
-                                  peak_1, peak_2, ratio, ...
-                                  peak_1_8bit, peak_2_8bit, ratio_8bit,...
-                                  quantization_step, z, x);
-        
-        fclose(fid);
+     
         
     function coords_ind = check_if_coords(filename, list_of_filenames_with_coords)
         
