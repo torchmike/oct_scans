@@ -334,7 +334,7 @@ for z = z_min:z_max
             found_left_peak = 0;
             A_scan_denoised_slice = A_Scan_denoised(:,x);
             A_scan_denoised_gauss_slice = A_Scan_denoised_gauss(:,x);
-            start_point =1;
+            start_point =20;
             
 
              for y_index = start_point:size(A_scan_denoised_slice,1) % Along y
