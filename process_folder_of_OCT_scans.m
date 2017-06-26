@@ -39,6 +39,9 @@ function process_folder_of_OCT_scans(directory, oct_extension)
     %% Process all of the files from the folder
     
         for file = 1 : no_of_files
+            if(~strcmp('CP_1mo_CP_P82252_Macular Cube 512x128_6-6-2016_8-56-40_OS_sn129623_cube_z.img' ,file_list{file}))
+            % continue;
+            end
             
             % check first if the file has been already denoised, so that we
             % don't have to do it again (remove the old denoised file from
@@ -65,19 +68,47 @@ function process_folder_of_OCT_scans(directory, oct_extension)
                 disp([' Denoising the file "', file_list{file}, '"'])
                 output = 'double';
                 [Z, sigmaEst, PSNR, SSIM] = BM4D_cubeWrapper(im, output); % Z is denoised im
+               % Z = imgaussfilt( im,2);
                 save_in_parfor_loop(Z, denoised_filename)                
                 
                 % Save to disk as .TIFF
                 % TODO! if you want .nrrd, .MAT,  .hdf5, or OME-TIFF, etc.
-                bitDepth = 16; % you can save some disk space with 8-bit                                
-                export_stack_toDisk(denoised_filename, Z, bitDepth)
+                %bitDepth = 16; % you can save some disk space with 8-bit                                
+                %export_stack_toDisk(denoised_filename, Z, bitDepth)
 
             end
             
-            % The faster part that extracts A-scans based on your desired
+       % The faster part that extracts A-scans based on your desired
             % coordinates
-            coords_ind = check_if_coords(file_list{file}, file_specs.filename);
-            eye = 'right';
+            try
+                coords_ind = check_if_coords(file_list{file}, file_specs.filename);
+            catch err                
+                if strcmp(err.identifier, 'MATLAB:table:UnrecognizedVarName')
+                    % for now some reason, the headers are gone and we
+                    % cannot reference with the field names?
+                    error(['header fields are just as var1 / var2 / var3 / etc.,', ...
+                           'they would need to have actually the variable names', ...
+                           'You probably have error when writing the text file with too many columns, extra tabs or something'])                    
+                else
+                    err
+                end
+            end
+            
+             % check the filename for which eye
+            if ~isempty(strfind(lower(file_list{file}), 'od'))
+                disp('OD found from filename, RIGHT EYE')
+                eye = 'right';
+            elseif ~isempty(strfind(lower(file_list{file}), 'os'))
+                disp('OS found from filename, LEFT EYE')
+                eye = 'left';
+            else
+                warning('OD nor OS was found from the filename so the program now does not know which eye the scan was from, using RIGHT EYE coordinates')
+                eye = 'right';
+            end
+            
+            coords_ind = find_coords_from_cube(Z, coords_ind, file_specs, eye);
+
+            
             if ~isempty(coords_ind)
                 [Z_crop, A_scan, x, z_min, z_max] = crop_the_cube(Z, coords_ind, file_specs, eye);
             else
@@ -96,8 +127,10 @@ for z = z_min:z_max
             bitDepth = 16; % you can save some disk space with 8-bit                                
             export_stack_toDisk(strrep(denoised_filename, '.tif', '_crop.tif'), Z_crop, bitDepth)
             
-            % Denoise the A-scan (from 1D line)            
-            A_scan_denoised = smooth(A_scan, 0.01, 'loess');            
+            % Denoise the A-scan (from 1D line)     
+            %size(A_scan);  
+            
+%            A_scan_denoised = smooth(A_scan(:,z), 0.01, 'loess');            
             
             % Test to denoise just the single frame and see the diff.
             frame = double(Z(:,:,z));
@@ -116,10 +149,11 @@ for z = z_min:z_max
             A_scan_denoised_2D_1D = smooth(A_scan_denoised_frame, 0.01, 'loess');
             
             % Normalize, export, compare peak ratios
-            [A_scan, A_scan_denoised, ...
+            [A_scan,  ...
+                A_Scan_denoised_gauss, ... 
                 A_scan_denoised_frame, A_scan_denoised_2D_1D, ...                
                  GCL_PEAKS, RPE_PEAKS, GCL_RPE_RATIOS] = ...
-                compare_A_scans(A_scan, A_scan_denoised, ...
+                compare_A_scans(A_scan,  ...
                             A_scan_denoised_frame, A_scan_denoised_2D_1D, ...
                             directory, stripped_filename);                                            
 
@@ -159,7 +193,7 @@ for z = z_min:z_max
                     lh = line([x(x_index) x(x_index)], [GCL_PEAKS(x_index) (GCL_PEAKS(x_index) + 15)], 'Color', 'r');
                     %lh.Color=[1,0,0,0.5];
 
-                    lh = line([x(x_index) x(x_index)], [(RPE_PEAKS(x_index) - 5) (RPE_PEAKS(x_index) + 5)], 'Color', 'r');
+                    lh = line([x(x_index) x(x_index)], [(RPE_PEAKS(x_index) - 5) (RPE_PEAKS(x_index) + 5)], 'Color', 'b');
                     %lh.Color=[1,0,0,0.5];
 
                 end
@@ -170,14 +204,15 @@ for z = z_min:z_max
                 title('Input'); colorbar
                 subplot(rows,cols,2); imshow(denoised, [])
                 title('BM4D Denoised'); colorbar
-                subplot(rows,cols,3); imshow(in-denoised, [])
-                title('Noise Residual (In-BM4D)'); colorbar
+                subplot(rows,cols,3); 
+                imshow(A_Scan_denoised_gauss, [])
+                title('Gaussian used for peak finding'); colorbar
                 
                 subplot(rows,cols,4); histogram(GCL_RPE_RATIOS,40);
                 title('Distribution of GCL/RPE Ratios'); colorbar; hold on
                % line([x x], [1 size(frame_denoised,1)], 'Color', 'r')
                 
-                subplot(rows,cols,5); imshow(denoised-frame_denoised, [])
+%                subplot(rows,cols,5); imshow(denoised-frame_denoised, [])
                 title('Noise Residual (BM4D-FrameDenoising)'); colorbar
                 
                 % A-Scan Comparison
@@ -194,7 +229,7 @@ for z = z_min:z_max
                                 
   
                 hold off
-                
+                 
                 saveOn = 1;
                 if saveOn == 1
                     filename = strrep(file_list{file}, '.img', '')
@@ -206,25 +241,27 @@ for z = z_min:z_max
                     filename
                     
                     saveas(fig,  filename, 'png')
-                    close all
+                    %close all
                 end
             end
-            
+            break
         end
-        
         end   
-    
-    function [A_scan, A_scan_denoised, A_scan_denoised_frame, A_scan_denoised_2D_1D, ...
+
+
+        
+        
+   function coords_ind = find_coords_from_cube(Z, coords_ind, file_specs, eye)
+        
+        disp('   Placeholder here if you want to do automated ROI localization from image')
+                
+    function [A_scan,A_Scan_denoised_gauss, A_scan_denoised_frame, A_scan_denoised_2D_1D, ...
             GCL_PEAKS, RPE_PEAKS, GCL_RPE_RATIOS] = ...
-            compare_A_scans(A_scan, A_scan_denoised, ...
+            compare_A_scans(A_scan,  ...
                     A_scan_denoised_frame, A_scan_denoised_2D_1D, ...
                     directory, stripped_filename)
 
-        % normalize the A_scan
-        A_scan_denoised = A_scan_denoised - min(A_scan_denoised(:));
-        A_scan_denoised = A_scan_denoised / max(A_scan_denoised(:));   
-
-        % normalize the A_scan
+        % normalize the A_scan frame
         A_scan_denoised_frame = A_scan_denoised_frame - min(A_scan_denoised_frame(:));
         A_scan_denoised_frame = A_scan_denoised_frame / max(A_scan_denoised_frame(:));    
 
@@ -238,14 +275,14 @@ for z = z_min:z_max
             % TODO! Maybe save some metadata if wanted at some point?    
         
         % [peak_1, peak_2, locs_peaks, ratio] = find_intensity_peaks(A_scan_denoised_frame, A_scan_denoised_2D_1D);
-        [GCL_PEAKS, RPE_PEAKS, GCL_RPE_RATIOS] = find_intensity_peaks(A_scan, A_scan_denoised_frame);
+        [A_Scan_denoised_gauss, GCL_PEAKS, RPE_PEAKS, GCL_RPE_RATIOS] = find_intensity_peaks(A_scan, A_scan_denoised_frame);
         
             % TODO! You could try different combinations, and you could do
             % systematic sensitivity analysis of how these parameters
             % actually affect your final estimates of the intensity ratio
             
             
-    function [ GCL_PEAKS, RPE_PEAKS, GCL_RPE_RATIOS] = find_intensity_peaks(A_scan, A_Scan_denoised)
+    function [A_Scan_denoised_gauss,  GCL_PEAKS, RPE_PEAKS, GCL_RPE_RATIOS] = find_intensity_peaks(A_scan, A_Scan_denoised)
         
         % Quite dumb algorithm in the end working for your canonical OCT
         % profile for sure. Think of something more robust if this start
@@ -266,47 +303,61 @@ for z = z_min:z_max
         RPE_PEAKS = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x
         GCL_RPE_RATIOS = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x
 
-        A_Scan_denoised_gauss = imgaussfilt(A_Scan_denoised, 5);
+        A_Scan_denoised_gauss = imgaussfilt(A_Scan_denoised, 12);
         for x=1:length(x_space)
             found_left_peak = 0;
             A_scan_denoised_slice = A_Scan_denoised(:,x);
             A_scan_denoised_gauss_slice = A_Scan_denoised_gauss(:,x);
             
             
-            
-            start_point =50;
+            [pks,locs] = findpeaks(A_scan_denoised_gauss_slice);
+        [pks,I] = sort(pks, 'descend');
+        locs = locs(I);
+        
+        locs_peaks = [locs(1) locs(2)];              
+        
+        peak_1 = locs_peaks(1);
+        peak_2 = locs_peaks(2);
+        
+        GCL_peak_index = min(peak_1,peak_2);
+        RPE_peak_index = max(peak_1,peak_2);
+        
+ %       y_index = peak_2;
+%            start_point =50;
             
 
-            for y_index = start_point:size(A_scan_denoised_slice,1) % Along y
-                my_std = std(A_scan_denoised_gauss_slice(start_point:y_index));
-                delta = A_scan_denoised_gauss_slice(y_index) - mean(A_scan_denoised_gauss_slice(start_point:y_index));
-
-               if delta > my_std*4
-                   found_left_peak=1
-                  break;
-               end
-            end
-            if found_left_peak == 0                               
-           %     plot(A_scan_denoised_gauss_slice);
-                    GCL_PEAKS(x) = -1;
-                    RPE_PEAKS(x) = -1;
-                    GCL_RPE_RATIOS(x) = -1;
-                    
-           continue
-          %      error('Could not effectively find a GCL peak');
-            end
-            GCL_peak_index = y_index + 20;
+%             for y_index = start_point:size(A_scan_denoised_slice,1) % Along y
+%                 my_std = std(A_scan_denoised_gauss_slice(start_point:y_index));
+%                 delta = A_scan_denoised_gauss_slice(y_index) - mean(A_scan_denoised_gauss_slice(start_point:y_index));
+% 
+%                if delta > my_std*4
+%                    found_left_peak=1;
+%                   break;
+%                end
+%             end
+%             if found_left_peak == 0                               
+%            %     plot(A_scan_denoised_gauss_slice);
+%                     GCL_PEAKS(x) = -1;
+%                     RPE_PEAKS(x) = -1;
+%                     GCL_RPE_RATIOS(x) = -1;
+%                     
+%            continue
+%           %      error('Could not effectively find a GCL peak');
+%             end
+            GCL_peak_index = GCL_peak_index -10;
             GCL_PEAKS(x) = GCL_peak_index;
             GCL_peak = mean(A_scan_denoised_gauss_slice(GCL_peak_index:GCL_peak_index+15)); % Or does it make more sense to use the original values?
-            offset = GCL_peak_index + 15;
-            [M,RPE_peak_index] = max(A_scan_denoised_gauss_slice(offset+1:length(A_scan_denoised_slice)));
-            RPE_peak_index = RPE_peak_index + offset
+%             offset = GCL_peak_index + 15;
+            %[M,RPE_peak_index] = max(A_scan_denoised_gauss_slice(offset+1:length(A_scan_denoised_slice)));
+             
+           % RPE_peak_index = peak_1
+           % RPE_peak_index = RPE_peak_index + offset;
             RPE_PEAKS(x) = RPE_peak_index;
             RPE_peak = mean(A_scan_denoised_slice(RPE_peak_index-5:RPE_peak_index+5));
             peak_1 = RPE_peak;
             peak_2=GCL_peak;
             ratio = GCL_peak / RPE_peak;
-            locs_peaks = [y_index RPE_peak_index ];
+            locs_peaks = [GCL_peak_index RPE_peak_index ];
             GCL_RPE_RATIOS(x) = ratio;
 
         end
