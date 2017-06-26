@@ -39,8 +39,8 @@ function process_folder_of_OCT_scans(directory, oct_extension)
     %% Process all of the files from the folder
     
         for file = 1 : no_of_files
-            if(~strcmp('CP_1mo_CP_P82252_Macular Cube 512x128_6-6-2016_8-56-40_OS_sn129623_cube_z.img' ,file_list{file}))
-            % continue;
+            if(~strcmp('AI_Pres_AI_P63377_Macular Cube 512x128_2-6-2013_13-41-45_OD_sn69135_cube_z.img' ,file_list{file}))
+             continue;
             end
             
             % check first if the file has been already denoised, so that we
@@ -170,6 +170,7 @@ for z = z_min:z_max
                 fig = figure('Color', 'w', 'Name', 'OCT A-Scan');
                     set(fig, 'Position', [0.1*scrsz(3) 0.1*scrsz(4) 0.8*scrsz(3) 0.8*scrsz(4)])
                 
+                    
                 rows = 2; cols = 3;
                 
                 % normalize for visualization
@@ -184,7 +185,9 @@ for z = z_min:z_max
                 frame_denoised = frame_denoised - min(frame_denoised(:));
                 frame_denoised = frame_denoised / max(frame_denoised(:));
                 
-                subplot(rows,cols,1); imshow(in, [])
+                a = subplot(rows,cols,1); imshow(in, [])
+                
+                
                 for x_index = 1:length(RPE_PEAKS) 
                     if GCL_PEAKS(x_index) == -1 || RPE_PEAKS(x_index) == -1
                         continue
@@ -205,7 +208,22 @@ for z = z_min:z_max
                 subplot(rows,cols,2); imshow(denoised, [])
                 title('BM4D Denoised'); colorbar
                 subplot(rows,cols,3); 
-                imshow(A_Scan_denoised_gauss, [])
+                gaussed_denoised = imgaussfilt(denoised, 12);
+                imshow(gaussed_denoised, [])
+                
+                
+                for x_index = 1:length(RPE_PEAKS) 
+                    if GCL_PEAKS(x_index) == -1 || RPE_PEAKS(x_index) == -1
+                        continue
+                    end                   
+                    lh = line([x(x_index) x(x_index)], [GCL_PEAKS(x_index) (GCL_PEAKS(x_index) + 15)], 'Color', 'r');
+                    lh.Color=[1,0,0,0.25];
+                    lh = line([x(x_index) x(x_index)], [(RPE_PEAKS(x_index) - 5) (RPE_PEAKS(x_index) + 5)], 'Color', 'b');
+                    lh.Color=[0,0,1 ,0.25];
+
+                end
+                
+                
                 title('Gaussian used for peak finding'); colorbar
                 
                 subplot(rows,cols,4); histogram(GCL_RPE_RATIOS,40);
@@ -219,11 +237,11 @@ for z = z_min:z_max
                 subplot(rows,cols,6); hold on
                 y = linspace(1, length(A_scan), length(A_scan));
                 
-                p = plot(A_scan); %y, A_scan, ...
-                         %y, A_scan_denoised, ...
+                p = plot(A_Scan_denoised_gauss); %y, A_scan, ...                
+                        %y, A_scan_denoised, ...
                          %y, A_scan_denoised_frame, 'k', ...
                          %y, A_scan_denoised_2D_1D);
-                set(p(3), 'LineWidth', 1)
+               % set(p(3), 'LineWidth', 1)
                 
                 xlim([0 length(y)])
                                 
@@ -244,7 +262,7 @@ for z = z_min:z_max
                     %close all
                 end
             end
-            break
+            break % XXX stopping from going to all zs
         end
         end   
 
@@ -361,10 +379,6 @@ for z = z_min:z_max
             GCL_RPE_RATIOS(x) = ratio;
 
         end
-        RPE_PEAKS
-        GCL_PEAKS
-        GCL_RPE_RATIOS
-                
             
         % TODO! If you feel like, you could add some uncertainty estimation with
         % Monte Carlo sampling or something similar as if your final
