@@ -39,8 +39,8 @@ function process_folder_of_OCT_scans(directory, oct_extension)
     %% Process all of the files from the folder
     
         for file = 1 : no_of_files
-            if(~strcmp('AO_Pres_AO_P80999_Macular Cube 512x128_12-18-2015_15-46-18_OD_sn121527_cube_z.img' ,file_list{file}))
-          %   continue; % XXX 
+            if(~strcmp('AO_1mo_AO_P80999_Macular Cube 512x128_1-13-2016_14-26-40_OD_sn122513_cube_z.img' ,file_list{file}))
+            %continue; % XXX 
             end
             
             % check first if the file has been already denoised, so that we
@@ -265,9 +265,14 @@ for z = z_min:z_max
                     
                     filename = fullfile(directory, filename);
                     filename
+                    try 
+                                        saveas(fig,  filename, 'png')
+                    catch
+                        warning('failed to save');
+                        warning(filename)
+                    end
                     
-                    saveas(fig,  filename, 'png')
-                    %close all
+                    close all
                 end
             end
             %break % XXX stopping from going to all zs
