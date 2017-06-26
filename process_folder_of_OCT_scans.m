@@ -267,7 +267,7 @@ for z = z_min:z_max
                     %close all
                 end
             end
-            break % XXX stopping from going to all zs
+            %break % XXX stopping from going to all zs
         end
         end   
 
