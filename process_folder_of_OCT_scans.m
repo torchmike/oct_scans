@@ -39,8 +39,8 @@ function process_folder_of_OCT_scans(directory, oct_extension)
     %% Process all of the files from the folder
     
         for file = 1 : no_of_files
-            if(~strcmp('EC_Pres_EC_P68880_Macular Cube 512x128_6-18-2014_11-54-32_OD_sn92396_cube_z.img' ,file_list{file}))
-             %continue; % XXX 
+            if(~strcmp('AO_Pres_AO_P80999_Macular Cube 512x128_12-18-2015_15-46-18_OD_sn121527_cube_z.img' ,file_list{file}))
+          %   continue; % XXX 
             end
             
             % check first if the file has been already denoised, so that we
@@ -223,10 +223,13 @@ for z = z_min:z_max
 
                 end
                 
+                                title('Gaussian used for peak finding'); colorbar
                 
-                title('Gaussian used for peak finding'); colorbar
+                subplot(rows,cols,4); 
                 
-                subplot(rows,cols,4); histogram(GCL_RPE_RATIOS,40);
+                histogram(GCL_RPE_RATIOS,40);
+                xlim([0 1.5])
+
                 title('Distribution of GCL/RPE Ratios'); colorbar; hold on
                % line([x x], [1 size(frame_denoised,1)], 'Color', 'r')
                 
