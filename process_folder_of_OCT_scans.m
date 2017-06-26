@@ -361,11 +361,12 @@ for z = z_min:z_max
 
             
                             
-            slice_after_left_peak = A_scan_denoised_gauss_slice(GCL_peak_index+69:length(A_scan_denoised_gauss_slice))  ;          
+            distance_threshold = 69
+            slice_after_left_peak = A_scan_denoised_gauss_slice(GCL_peak_index+distance_threshold:length(A_scan_denoised_gauss_slice))  ;          
             [pks,locs] = findpeaks(slice_after_left_peak);
             [pks,I] = sort(pks, 'descend');
             locs = locs(I);
-            RPE_peak_index =  locs(1) + GCL_peak_index + 69;
+            RPE_peak_index =  locs(1) + GCL_peak_index + distance_threshold;
             
 %             offset = GCL_peak_index + 15;
             %[M,RPE_peak_index] = max(A_scan_denoised_gauss_slice(offset+1:length(A_scan_denoised_slice)));
