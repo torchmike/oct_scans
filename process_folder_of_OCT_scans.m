@@ -39,8 +39,8 @@ function process_folder_of_OCT_scans(directory, oct_extension)
     %% Process all of the files from the folder
     
         for file = 1 : no_of_files
-            if(~strcmp('AI_Pres_AI_P63377_Macular Cube 512x128_2-6-2013_13-41-45_OD_sn69135_cube_z.img' ,file_list{file}))
-             continue;
+            if(~strcmp('EC_Pres_EC_P68880_Macular Cube 512x128_6-18-2014_11-54-32_OD_sn92396_cube_z.img' ,file_list{file}))
+             %continue; % XXX 
             end
             
             % check first if the file has been already denoised, so that we
@@ -230,18 +230,23 @@ for z = z_min:z_max
                 title('Distribution of GCL/RPE Ratios'); colorbar; hold on
                % line([x x], [1 size(frame_denoised,1)], 'Color', 'r')
                 
-%                subplot(rows,cols,5); imshow(denoised-frame_denoised, [])
-                title('Noise Residual (BM4D-FrameDenoising)'); colorbar
+                subplot(rows,cols,5); 
+                bplot(GCL_RPE_RATIOS);
+                title('Interquartile Range of GCL/RPE Ratios'); colorbar
                 
                 % A-Scan Comparison
                 subplot(rows,cols,6); hold on
                 y = linspace(1, length(A_scan), length(A_scan));
                 
-                p = plot(A_Scan_denoised_gauss); %y, A_scan, ...                
-                        %y, A_scan_denoised, ...
-                         %y, A_scan_denoised_frame, 'k', ...
-                         %y, A_scan_denoised_2D_1D);
-               % set(p(3), 'LineWidth', 1)
+                
+                
+                p = plot(A_Scan_denoised_gauss);
+                
+                for x_index = 1:length(RPE_PEAKS)
+                    p_peaks = plot(RPE_PEAKS(x_index), A_Scan_denoised_gauss(RPE_PEAKS(x_index),x_index) , '^', GCL_PEAKS(x_index), A_Scan_denoised_gauss(GCL_PEAKS(x_index),x_index), '^');
+                    set(p_peaks, 'MarkerFaceColor', 'k')
+                end
+
                 
                 xlim([0 length(y)])
                                 
@@ -321,50 +326,44 @@ for z = z_min:z_max
         RPE_PEAKS = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x
         GCL_RPE_RATIOS = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x
 
-        A_Scan_denoised_gauss = imgaussfilt(A_Scan_denoised, 12);
+        A_Scan_denoised_gauss = imgaussfilt(A_Scan_denoised, 10);
         for x=1:length(x_space)
             found_left_peak = 0;
             A_scan_denoised_slice = A_Scan_denoised(:,x);
             A_scan_denoised_gauss_slice = A_Scan_denoised_gauss(:,x);
-            
-            
-            [pks,locs] = findpeaks(A_scan_denoised_gauss_slice);
-        [pks,I] = sort(pks, 'descend');
-        locs = locs(I);
-        
-        locs_peaks = [locs(1) locs(2)];              
-        
-        peak_1 = locs_peaks(1);
-        peak_2 = locs_peaks(2);
-        
-        GCL_peak_index = min(peak_1,peak_2);
-        RPE_peak_index = max(peak_1,peak_2);
-        
- %       y_index = peak_2;
-%            start_point =50;
+            start_point =1;
             
 
-%             for y_index = start_point:size(A_scan_denoised_slice,1) % Along y
-%                 my_std = std(A_scan_denoised_gauss_slice(start_point:y_index));
-%                 delta = A_scan_denoised_gauss_slice(y_index) - mean(A_scan_denoised_gauss_slice(start_point:y_index));
-% 
-%                if delta > my_std*4
-%                    found_left_peak=1;
-%                   break;
-%                end
-%             end
-%             if found_left_peak == 0                               
-%            %     plot(A_scan_denoised_gauss_slice);
-%                     GCL_PEAKS(x) = -1;
-%                     RPE_PEAKS(x) = -1;
-%                     GCL_RPE_RATIOS(x) = -1;
-%                     
-%            continue
-%           %      error('Could not effectively find a GCL peak');
-%             end
-            GCL_peak_index = GCL_peak_index -10;
+             for y_index = start_point:size(A_scan_denoised_slice,1) % Along y
+                 my_std = std(A_scan_denoised_gauss_slice);
+                 delta = A_scan_denoised_gauss_slice(y_index) - mean(A_scan_denoised_gauss_slice(start_point:y_index));
+ 
+                if delta > my_std*1
+                    found_left_peak=1;
+                   break;
+                end
+             end
+             if found_left_peak == 0                               
+            %     plot(A_scan_denoised_gauss_slice);
+                     GCL_PEAKS(x) = -1;
+                     RPE_PEAKS(x) = -1;
+                     GCL_RPE_RATIOS(x) = -1;
+                     
+            continue
+           %      error('Could not effectively find a GCL peak');
+             end
+            GCL_peak_index = y_index+ 20;
             GCL_PEAKS(x) = GCL_peak_index;
             GCL_peak = mean(A_scan_denoised_gauss_slice(GCL_peak_index:GCL_peak_index+15)); % Or does it make more sense to use the original values?
+
+            
+                            
+            slice_after_left_peak = A_scan_denoised_gauss_slice(GCL_peak_index+69:length(A_scan_denoised_gauss_slice))  ;          
+            [pks,locs] = findpeaks(slice_after_left_peak);
+            [pks,I] = sort(pks, 'descend');
+            locs = locs(I);
+            RPE_peak_index =  locs(1) + GCL_peak_index + 69;
+            
 %             offset = GCL_peak_index + 15;
             %[M,RPE_peak_index] = max(A_scan_denoised_gauss_slice(offset+1:length(A_scan_denoised_slice)));
              
