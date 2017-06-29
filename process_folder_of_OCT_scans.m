@@ -119,7 +119,12 @@ function process_folder_of_OCT_scans(directory, oct_extension)
             
             
 for z = z_min:z_max
-            
+           
+    
+    if strcmp(stripped_filename, 'FM_1mo_FM_P71768_Macular Cube 512x128_7-30-2014_11-23-26_OS_sn94680_cube_z') &&  z <= 59
+        disp('skippping because patient blinked')
+        continue
+    end
             
             % Save the cropped cube, you could do further
             % denoising/smoothing at this point a lot faster than on the
