@@ -157,7 +157,7 @@ for z = z_min:z_max
             [A_scan,  ...
                 A_Scan_denoised_gauss, ... 
                 A_scan_denoised_frame, A_scan_denoised_2D_1D, ...                
-                 GCL_PEAKS, RPE_PEAKS, GCL_RPE_RATIOS] = ...
+                 GCL_PEAKS, GCL_VALUES, RPE_PEAKS, RPE_VALUES GCL_RPE_RATIOS] = ...
                 compare_A_scans(A_scan,  ...
                             A_scan_denoised_frame, A_scan_denoised_2D_1D, ...
                             directory, stripped_filename);                                            
@@ -167,6 +167,21 @@ for z = z_min:z_max
             gcl_rpe_ratios_filename = sprintf("%s_%d.txt", strrep(denoised_filename, '.tif', '_gcl_rpe_ratios'), z);
             gcl_rpe_ratios_file = fopen(gcl_rpe_ratios_filename,'w')
             fprintf(gcl_rpe_ratios_file,'%12.8f\n',GCL_RPE_RATIOS);
+            
+            
+            
+            gcl_values_filename = sprintf("%s_%d.txt", strrep(denoised_filename, '.tif', '_gcl_values'), z);
+            gcl_values_file = fopen(gcl_values_filename,'w')
+            fprintf(gcl_values_file,'%12.8f\n',GCL_VALUES);
+            
+            
+            
+            rpe_values_filename = sprintf("%s_%d.txt", strrep(denoised_filename, '.tif', '_rpe_values'), z);
+            rpe_values_file = fopen(rpe_values_filename,'w')
+            fprintf(rpe_values_file,'%12.8f\n',RPE_VALUES);
+            
+            
+            
             z_of_interest = z;
             visualize_ON = 1;
             if visualize_ON == 1 
@@ -292,7 +307,7 @@ for z = z_min:z_max
         disp('   Placeholder here if you want to do automated ROI localization from image')
                 
     function [A_scan,A_Scan_denoised_gauss, A_scan_denoised_frame, A_scan_denoised_2D_1D, ...
-            GCL_PEAKS, RPE_PEAKS, GCL_RPE_RATIOS] = ...
+            GCL_PEAKS, GCL_VALUES,  RPE_PEAKS, RPE_VALUES, GCL_RPE_RATIOS] = ...
             compare_A_scans(A_scan,  ...
                     A_scan_denoised_frame, A_scan_denoised_2D_1D, ...
                     directory, stripped_filename)
@@ -311,14 +326,14 @@ for z = z_min:z_max
             % TODO! Maybe save some metadata if wanted at some point?    
         
         % [peak_1, peak_2, locs_peaks, ratio] = find_intensity_peaks(A_scan_denoised_frame, A_scan_denoised_2D_1D);
-        [A_Scan_denoised_gauss, GCL_PEAKS, RPE_PEAKS, GCL_RPE_RATIOS] = find_intensity_peaks(A_scan, A_scan_denoised_frame);
+        [A_Scan_denoised_gauss, GCL_PEAKS, GCL_VALUES, RPE_PEAKS, RPE_VALUES, GCL_RPE_RATIOS] = find_intensity_peaks(A_scan, A_scan_denoised_frame,stripped_filename);
         
             % TODO! You could try different combinations, and you could do
             % systematic sensitivity analysis of how these parameters
             % actually affect your final estimates of the intensity ratio
             
             
-    function [A_Scan_denoised_gauss,  GCL_PEAKS, RPE_PEAKS, GCL_RPE_RATIOS] = find_intensity_peaks(A_scan, A_Scan_denoised)
+    function [A_Scan_denoised_gauss,  GCL_PEAKS, GCL_VALUES, RPE_PEAKS, RPE_VALUES, GCL_RPE_RATIOS] = find_intensity_peaks(A_scan, A_Scan_denoised,stripped_filename)
         
         % Quite dumb algorithm in the end working for your canonical OCT
         % profile for sure. Think of something more robust if this start
@@ -336,7 +351,10 @@ for z = z_min:z_max
         
         x_space = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x
         GCL_PEAKS = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x 
+        GCL_VALUES = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x 
+
         RPE_PEAKS = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x
+        RPE_VALUES = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x 
         GCL_RPE_RATIOS = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x
 
         A_Scan_denoised_gauss = imgaussfilt(A_Scan_denoised, 10);
@@ -389,6 +407,8 @@ for z = z_min:z_max
             peak_2=GCL_peak;
             ratio = GCL_peak / RPE_peak;
             locs_peaks = [GCL_peak_index RPE_peak_index ];
+            GCL_VALUES(x) = GCL_peak;
+            RPE_VALUES(x) = RPE_peak;
             GCL_RPE_RATIOS(x) = ratio;
 
         end
