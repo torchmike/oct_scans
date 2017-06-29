@@ -356,8 +356,14 @@ for z = z_min:z_max
         RPE_PEAKS = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x
         RPE_VALUES = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x 
         GCL_RPE_RATIOS = linspace(1, size(A_scan,2), size(A_scan,2)); % Along x
+        gauss_blur_amount = 10;
+        if strcmp('BN_1Month_BN_P71161_Macular Cube 512x128_7-11-2014_16-53-42_OD_sn71731_cube_z', stripped_filename) || ...
+            strcmp('FM_1mo_FM_P71768_Macular Cube 512x128_7-30-2014_11-23-26_OS_sn94680_cube_z', stripped_filename) 
+                gauss_blur_amount = 14;
+        end
+        A_Scan_denoised_gauss = imgaussfilt(A_Scan_denoised, gauss_blur_amount);
 
-        A_Scan_denoised_gauss = imgaussfilt(A_Scan_denoised, 10);
+        
         for x=1:length(x_space)
             found_left_peak = 0;
             A_scan_denoised_slice = A_Scan_denoised(:,x);
@@ -389,7 +395,18 @@ for z = z_min:z_max
 
             
                             
-            distance_threshold = 69
+                            
+                
+            distance_threshold = 69;
+            if strcmp('AO_Pres_AO_P80999_Macular Cube 512x128_12-18-2015_15-46-18_OD_sn121527_cube_z', stripped_filename) || ...
+                    strcmp('MB_Pres_MB_P72514_Macular Cube 512x128_8-6-2014_16-8-38_OD_sn95286_cube_z', stripped_filename)  ||  ...
+                    strcmp('RS_1Month_RS_P71242_Macular Cube 512x128_6-27-2014_9-25-8_OS_sn71105_cube_z', stripped_filename)  || ...
+                    strcmp('VR_Pres_VR_P80744_Macular Cube 512x128_12-16-2015_14-45-48_OS_sn121425_cube_z', stripped_filename)
+                
+                distance_threshold = 120;
+            end
+             
+            
             slice_after_left_peak = A_scan_denoised_gauss_slice(GCL_peak_index+distance_threshold:length(A_scan_denoised_gauss_slice))  ;          
             [pks,locs] = findpeaks(slice_after_left_peak);
             [pks,I] = sort(pks, 'descend');
