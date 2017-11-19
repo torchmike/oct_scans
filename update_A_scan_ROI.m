@@ -47,7 +47,7 @@ function update_A_scan_ROI(directory, oct_extension)
         
     %% Create cell for ouput
     
-        config.crop_z_window = [85 105];
+        config.crop_z_window = [15 35];
         config.crop_left_eye = [185 355];
         config.crop_right_eye = [185 355];
     

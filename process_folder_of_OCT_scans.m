@@ -164,6 +164,21 @@ for z = z_min:z_max
 
                         % OPTIONAL VISUALIZATION
                         
+            discontinuity = false
+            for x_index = 2:length(RPE_PEAKS)
+                if abs(RPE_PEAKS(x_index) - RPE_PEAKS(x_index-1)) > 5 || ...
+                        abs(GCL_PEAKS(x_index) - GCL_PEAKS(x_index-1)) > 5
+                    discontinuity=true
+                    disp('skippping because patient blinked')
+                    
+
+                end
+            end
+            if discontinuity
+                continue
+            end
+
+                        
             gcl_rpe_ratios_filename = sprintf("%s_%d.txt", strrep(denoised_filename, '.tif', '_gcl_rpe_ratios'), z);
             gcl_rpe_ratios_file = fopen(gcl_rpe_ratios_filename,'w')
             fprintf(gcl_rpe_ratios_file,'%12.8f\n',GCL_RPE_RATIOS);
@@ -220,6 +235,7 @@ for z = z_min:z_max
                     %lh.Color=[1,0,0,0.5];
 
                 end
+                %check for discontinuities
                 
  %               line([x x], [GCL_peak_index (GCL_peak_index + 20)], 'Color', 'b')
              %   line([x x], [(RPE_peak_index - 5) (RPE_peak_index + 5)], 'Color', 'b')
@@ -243,6 +259,7 @@ for z = z_min:z_max
 
                 end
                 
+               
                                 title('Gaussian used for peak finding'); colorbar
                 
                 subplot(rows,cols,4); 
@@ -273,11 +290,11 @@ for z = z_min:z_max
                 
                 xlim([0 length(y)])
                                 
+
   
-                hold off
+                hold on;
                  
-                saveOn = 1;
-                if saveOn == 1
+                if discontinuity == false
                     filename = strrep(file_list{file}, '.img', '')
                     filename = sprintf('%s_%d',filename, z);
                     directory
@@ -292,8 +309,8 @@ for z = z_min:z_max
                         warning(filename)
                     end
                     
-                    close all
                 end
+                close all
             end
             %break % XXX stopping from going to all zs
         end
@@ -369,7 +386,15 @@ for z = z_min:z_max
             A_scan_denoised_slice = A_Scan_denoised(:,x);
             A_scan_denoised_gauss_slice = A_Scan_denoised_gauss(:,x);
             start_point =20;
-            
+            if strcmp('AO_1mo_AO_P80999_Macular Cube 512x128_1-13-2016_14-26-40_OD_sn122513_cube_z', stripped_filename) ||...
+                strcmp('AO_Pres_AO_P80999_Macular Cube 512x128_12-18-2015_15-46-18_OD_sn121527_cube_z', stripped_filename) ||...
+                strcmp('ML_Pres_ML_P76918_Macular Cube 512x128_5-27-2015_13-54-2_OS_sn110490_cube_z', stripped_filename) ||...                    
+                strcmp('MB_Pres_MB_P72514_Macular Cube 512x128_8-6-2014_16-8-38_OD_sn95286_cube_z', stripped_filename)
+                
+                
+                start_point = 120;
+            end
+
 
              for y_index = start_point:size(A_scan_denoised_slice,1) % Along y
                  my_std = std(A_scan_denoised_gauss_slice);
@@ -401,9 +426,16 @@ for z = z_min:z_max
             if strcmp('AO_Pres_AO_P80999_Macular Cube 512x128_12-18-2015_15-46-18_OD_sn121527_cube_z', stripped_filename) || ...
                     strcmp('MB_Pres_MB_P72514_Macular Cube 512x128_8-6-2014_16-8-38_OD_sn95286_cube_z', stripped_filename)  ||  ...
                     strcmp('RS_1Month_RS_P71242_Macular Cube 512x128_6-27-2014_9-25-8_OS_sn71105_cube_z', stripped_filename)  || ...
-                    strcmp('VR_Pres_VR_P80744_Macular Cube 512x128_12-16-2015_14-45-48_OS_sn121425_cube_z', stripped_filename)
+                strcmp('LS_1Month_LS_P61270_Macular Cube 512x128_8-22-2014_11-5-35_OD_sn73652_cube_z', stripped_filename) || ...
+                strcmp('LZ_Initial_LZ_P67032_Macular Cube 512x128_8-27-2013_9-24-39_OD_sn57072_cube_z', stripped_filename) || ...
+                strcmp('RS_Initial_RS_P71242_Macular Cube 512x128_5-27-2014_9-1-11_OS_sn69583_cube_z', stripped_filename) || ...
+                strcmp('FM_Pres_FM_P71768_Macular Cube 512x128_7-2-2014_11-31-8_OS_sn93081_cube_z', stripped_filename) || ...
+                strcmp('VR_Pres_VR_P80744_Macular Cube 512x128_12-16-2015_14-45-48_OS_sn121425_cube_z', stripped_filename)
                 
-                distance_threshold = 120;
+                distance_threshold = 150;
+            end
+            if strcmp('DM_OD_Initial_DM_P75876_Macular Cube 512x128_3-20-2015_10-52-4_OD_sn106781_cube_z', stripped_filename)   
+                distance_threshold=200;
             end
              
             
@@ -412,12 +444,6 @@ for z = z_min:z_max
             [pks,I] = sort(pks, 'descend');
             locs = locs(I);
             RPE_peak_index =  locs(1) + GCL_peak_index + distance_threshold;
-            
-%             offset = GCL_peak_index + 15;
-            %[M,RPE_peak_index] = max(A_scan_denoised_gauss_slice(offset+1:length(A_scan_denoised_slice)));
-             
-           % RPE_peak_index = peak_1
-           % RPE_peak_index = RPE_peak_index + offset;
             RPE_PEAKS(x) = RPE_peak_index;
             RPE_peak = mean(A_scan_denoised_slice(RPE_peak_index-5:RPE_peak_index+5));
             peak_1 = RPE_peak;
@@ -457,10 +483,9 @@ for z = z_min:z_max
             right_min = file_specs.right_min(coords_ind);
             right_max = file_specs.right_max(coords_ind);
         end
-        
         if strcmp(eye, 'left')
             x_min = left_min;
-            x_max = left_max;
+            x_max = left_max;   
             
         elseif strcmp(eye, 'right')
             x_min = right_min;
